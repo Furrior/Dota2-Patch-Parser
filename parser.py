@@ -1,25 +1,23 @@
 from lxml import etree
 import lxml.html
 import io
-import random
-
-patch = io.open("7.31.html", encoding='utf-8', mode='r')
 
 
-class ChangeObject:
+class Changing:
     def __init__(self, _itself_changes=[]) -> None:
         self.itself_changes = _itself_changes
 
 
-class ChangeItem(ChangeObject):
-    def __init__(self, _name, _itself_changes=[]) -> None:
+class ItemChanging(Changing):
+    def __init__(self, _name, _picurl, _itself_changes=[]) -> None:
         super().__init__(_itself_changes)
         self.name = _name
+        self.picurl = _picurl
         self.itself_changes = "\n".join(self.itself_changes)
 
 
-class ChangeHero(ChangeItem):
-    def __init__(self, _name, _itself_changes=[], _skills_changes=[]) -> None:
+class HeroChanging(ItemChanging):
+    def __init__(self, _name, _picurl, _itself_changes=[], _skills_changes=[]) -> None:
         super().__init__(_name, _itself_changes)
         self.skills_changes = _skills_changes
 
@@ -36,21 +34,22 @@ def parse(file):
     items = tree.xpath('//*[@class="patchnotespage_PatchNoteItem_32hr0"]')
     heroes = tree.xpath('//*[@class="patchnotespage_PatchNoteHero_99z4V"]')
 
-    general_changes = ChangeObject(general[0].xpath(
+    general_changes = Changing(general[0].xpath(
         './/div[@class="patchnotespage_Note_eSxyZ"]/text()'))
 
     items_changes = {}
     for i in items:
         name = i.xpath(
             './/div[@class="patchnotespage_ItemName_1MKhq"]/text()')[0]
+        picurl = f'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/{name.replace(" ", "_")}.png'
         changes = i.xpath('.//*[@class="patchnotespage_Note_eSxyZ"]/text()')
-        items_changes[name] = ChangeItem(name, changes)
+        items_changes[name] = ItemChanging(name, picurl, changes)
 
     heroes_changes = {}
     for h in heroes:
         name = h.xpath(
             './/div[@class="patchnotespage_HeroName_1nuWb"]/text()')[0]
-
+        picurl = f"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/{name.replace(' ', '_')}.png"
         itself_changes = []
 
         itself_changes_div = h.xpath(
@@ -79,56 +78,7 @@ def parse(file):
                     './/div[@class="patchnotespage_Note_eSxyZ"]/text()')
                 skills_changes[skill_name] = skill_changes
 
-        heroes_changes[name] = ChangeHero(
-            name, itself_changes, skills_changes)
+        heroes_changes[name] = HeroChanging(
+            name, picurl, itself_changes, skills_changes)
 
     return {"General": general_changes, "Items": items_changes, "Heroes": heroes_changes}
-
-
-data = parse(patch)
-
-
-def getRandomItemData():
-    name, itemobject = random.choice(list((data)["Items"].items()))
-    return itemobject
-
-
-def getRandomGeneralData():
-    return random.choice(data["General"].itself_changes)
-
-
-def getRandomHeroData():
-    name, heroobject = random.choice(list((data)["Heroes"].items()))
-    return(heroobject)
-
-
-def printItemUpdate(itemobject):
-    print(itemobject.name)
-    print(itemobject.itself_changes)
-
-
-def printGeneralUpdate(update):
-    print(update)
-
-
-def printHeroUpdate(heroobject):
-    print(heroobject.name)
-    print("Stats and etc:")
-    print(heroobject.itself_changes)
-    print()
-    print("Skills:")
-    for s in heroobject.skills_changes:
-        c = heroobject.skills_changes[s]
-        print(s)
-        for i in c:
-            print(i)
-        print()
-
-
-if __name__ == "__main__":
-    printHeroUpdate(getRandomHeroData())
-    print()
-    printItemUpdate(getRandomItemData())
-    print()
-    printGeneralUpdate(getRandomGeneralData())
-    input()
